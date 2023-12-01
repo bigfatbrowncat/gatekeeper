@@ -19,6 +19,7 @@ import logging.handlers
 import re
 import signal
 import functools
+import netifaces as ni
 
 from getopt import getopt, GetoptError
 from textwrap import TextWrapper
@@ -109,7 +110,7 @@ def parse_args():
 def handle_signals(publisher, signum, frame):
     """Unpublish all mDNS records and exit cleanly."""
 
-    signame = next(v for v, k in signal.__dict__.iteritems() if k == signum)
+    signame = next(v for v, k in signal.__dict__.items() if k == signum)
     logging.debug("Cleaning up on %s...", signame)
     publisher.__del__()
 
@@ -152,11 +153,24 @@ def main():
             signal.signal(signal.SIGINT, functools.partial(handle_signals, publisher))
             signal.signal(signal.SIGQUIT, functools.partial(handle_signals, publisher))
 
+            # for iface in ni.interfaces():
+            #     if iface == 'lo':
+            #         logging.debug("Skipping loopback adapter")
+            #         continue
+            #     for address_descs in ni.ifaddresses(iface).values():
+            #        for address_desc in address_descs:
+            #            address = address_desc['addr']
+
             for cname in cnames:
-                status = publisher.publish_cname(cname, force)
-                if not status:
-                    logging.error("Failed to publish '%s'", cname)
-                    continue
+                import dbus
+                try:
+                    status = publisher.publish_address(cname, address, force=True)
+                    #status = publisher.publish_cname(cname, force=True)
+                    if not status:
+                        logging.error("Failed to publish '%s'", cname)
+                        continue
+                except dbus.exceptions.DBusException:
+                    logging.warning("Invalid address. Skipping")
 
             if publisher.count() == len(cnames):
                 logging.info("All CNAMEs published")

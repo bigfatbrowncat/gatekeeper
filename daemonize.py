@@ -48,7 +48,7 @@ def daemonize():
     os.chdir("/")
 
     # Sanitize permissions...
-    os.umask(022)
+    os.umask(22)
 
     # Redirect the standard file descriptors to "/dev/null"...
     f = open(os.devnull, "r")
